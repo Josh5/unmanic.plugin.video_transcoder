@@ -32,10 +32,13 @@ class GlobalSettings:
     @staticmethod
     def options():
         # Global and main config options
+        # TODO: Check https://superuser.com/questions/155305/how-many-threads-does-ffmpeg-use-by-default
         return {
             "main_options":           {
                 "mode":                  "basic",
                 "max_muxing_queue_size": 2048,
+                "specify_threads":       True,
+                "thread_count":          1,
             },
             "encoder_selection":      {
                 "video_codec":   "hevc",
@@ -107,6 +110,24 @@ class GlobalSettings:
             "slider_options": {
                 "min": 1024,
                 "max": 10240,
+            },
+        }
+        if self.settings.get_setting('mode') not in ['standard', 'advanced']:
+            values["display"] = 'hidden'
+        return values
+
+    def get_specify_threads_form_settings(self):
+        return {
+            "label": "Specify the number of threads to used by the FFmpeg command process",
+        }
+
+    def get_threads_form_settings(self):
+        values = {
+            "label":          "Max input stream packet buffer",
+            "input_type":     "slider",
+            "slider_options": {
+                "min": 0,
+                "max": 100,
             },
         }
         if self.settings.get_setting('mode') not in ['standard', 'advanced']:
