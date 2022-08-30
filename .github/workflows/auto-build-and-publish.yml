@@ -132,7 +132,7 @@ jobs:
     - name: Prepare build environment
       id: config
       run: |
-        echo ::set-output name=dest_repo::Unmanic/unmanic-plugins
+        echo ::set-output name=dest_repo::Josh5/test-workflows
         echo ::set-output name=dest_repo_branch::official
         echo ::set-output name=workflow_run_link::$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
 
@@ -181,18 +181,18 @@ jobs:
         echo ::set-output name=result::$(cat ./result.txt)
       shell: bash
 
-    # If a PR branch was created, force push branch to dest repo
-    - name: Push PR branch
-      if: steps.execute.outputs.result == 'success'
-      run: |
-        git config -l | grep 'http\..*\.extraheader' | cut -d= -f1 | xargs -L1 git config --unset-all
-        git push -f https://token:${GH_TOKEN}@github.com/${{ steps.config.outputs.dest_repo }}.git "pr-${{ steps.prepare.outputs.plugin_id }}"
-        # Add a small sleep here before running completing this job
-        sleep 2
-      env:
-        GH_TOKEN: "${{ secrets.GH_TOKEN }}"
+    # # If a PR branch was created, force push branch to dest repo
+    # - name: Push PR branch
+    #   if: steps.execute.outputs.result == 'success'
+    #   run: |
+    #     git config -l | grep 'http\..*\.extraheader' | cut -d= -f1 | xargs -L1 git config --unset-all
+    #     git push -f https://token:${GH_TOKEN}@github.com/${{ steps.config.outputs.dest_repo }}.git "pr-${{ steps.prepare.outputs.plugin_id }}"
+    #     # Add a small sleep here before running completing this job
+    #     sleep 2
+    #   env:
+    #     GH_TOKEN: "${{ secrets.GH_TOKEN }}"
 
-    # Open a PR (if one is not already open)
+    # If a PR branch was created, force push branch to dest repo and open a PR (if one is not already open)
     - name: Generate PR
       if: steps.execute.outputs.result == 'success'
       uses: peter-evans/create-pull-request@v4
