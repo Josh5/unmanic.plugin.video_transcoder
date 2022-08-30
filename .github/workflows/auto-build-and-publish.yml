@@ -1,0 +1,106 @@
+name: Automatically build and publish this plugin
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+
+  build-and-publish-plugin:
+    runs-on: ubuntu-latest
+    name: Build and publish plugin
+    steps:
+
+    # Checkout the official plugin repo templates
+    - name: Checkout official plugin repo templates branch
+      uses: actions/checkout@v2
+      with:
+        repository: Unmanic/unmanic-plugins
+        ref: template
+        path: template
+
+    # Checkout plugin source
+    - name: Checkout plugin
+      uses: actions/checkout@v2
+      with:
+        path: plugin
+
+    # Prepare build environment
+    - name: Prepare build environment
+      id: prepare
+      run: |
+        # Copy generate repo script to scripts directory
+        cp -rfv ./template/scripts ./
+        if [ ! -e ./scripts/generate_repository.py ]; then
+            echo "Unable to build repo. Could not find generator script."
+            exit 1
+        fi
+
+        # Create dummy repo config
+        cat << EOF > config.json
+        {
+            "id": "repository.tmp",
+            "name": "Build Repo",
+            "icon": ""
+        }
+        EOF
+
+        # Read plugin id and version from info.json
+        plugin_id=$(cat plugin/info.json | jq -r .id)
+        plugin_version=$(cat plugin/info.json | jq -r .version)
+        echo ::set-output name=plugin_id::${plugin_id}
+        echo ::set-output name=plugin_version::${plugin_version}
+
+        # Install plugin into source directory for building
+        mkdir -p source/
+        mv -fv plugin source/${plugin_id}
+
+    # Setup python environment
+    - name: Set up Python 3.8
+      if: success()
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    # Setup node environment
+    - name: Set up node 16
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+
+    # Generate repo
+    - name: Generate repository from source
+      if: success()
+      id: generate_repo
+      run: |
+        ls -al ./scripts/
+        ls -al ./source/
+        ls -al ./source/${{ steps.prepare.outputs.plugin_id }}/
+        cat ./source/${{ steps.prepare.outputs.plugin_id }}/info.json
+        python ./scripts/generate_repository.py
+
+    # Upload artifacts
+    - uses: actions/upload-artifact@v2
+      with:
+        name: plugin.${{ steps.prepare.outputs.plugin_id }}-v${{ steps.prepare.outputs.plugin_version }}
+        path: repo/**/*.zip
+
+    # TODO: Generate GitHub release with artifact
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: |
+          repo/**/*.zip
+    # - name: Deploy repository
+    #   if: success() && (github.ref == 'refs/heads/master')
+    #   uses: s0/git-publish-subdir-action@develop
+    #   env:
+    #     REPO: self
+    #     BRANCH: repo
+    #     FOLDER: repo
+    #     SQUASH_HISTORY: true
+    #     GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
